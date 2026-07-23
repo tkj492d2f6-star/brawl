@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ブロスタログ">
+<meta name="theme-color" content="#1B1F3A">
+<title>ブロスタ ガチバトル ログ</title>
+<link rel="manifest" href='data:application/json,{"name":"Brawl Log","short_name":"BSログ","start_url":".","display":"standalone","background_color":"%231B1F3A","theme_color":"%231B1F3A","icons":[{"src":"data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 192 192%22><rect width=%22192%22 height=%22192%22 fill=%22%231B1F3A%22 rx=%2232%22/><text x=%2296%22 y=%22128%22 font-size=%22110%22 text-anchor=%22middle%22 fill=%22%23FFCC4D%22>%E2%9A%94%EF%B8%8F</text></svg>","sizes":"192x192","type":"image/svg+xml"}]}'>
+<style>
+:root{
+  --bg:#1B1F3A; --bg2:#252A4A; --panel:#2A2F52; --hdr:#151830;
+  --accent:#FFCC4D; --accent2:#FFB020;
+  --win:#1E7A3E; --winL:#2FA858; --lose:#A83232; --loseL:#D64545;
+  --draw:#666; --drawL:#888;
+  --ally:#2E5A9F; --enemy:#9F2E2E; --ban:#6A3E90; --order:#8A4A20; --mvp:#B08010;
+  --txt:#F5F5F5; --sub:#B0B4CC; --line:#3A3F62;
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;font-size:14px; overscroll-behavior:none}
+body{padding-bottom:70px; padding-top:env(safe-area-inset-top)}
+h1,h2,h3{margin:0.5em 0; color:var(--accent)}
+h1{font-size:18px} h2{font-size:16px} h3{font-size:14px}
+
+/* トップバー */
+.topbar{position:sticky;top:0;background:var(--hdr);z-index:10;padding:10px 12px;border-bottom:2px solid var(--accent);display:flex;justify-content:space-between;align-items:center}
+.topbar .title{color:var(--accent);font-weight:bold;font-size:16px}
+.topbar .stat{color:var(--sub);font-size:12px}
+
+/* タブ */
+.tabbar{position:fixed;bottom:0;left:0;right:0;background:var(--hdr);border-top:2px solid var(--accent);display:flex;z-index:20; padding-bottom:env(safe-area-inset-bottom)}
+.tabbar button{flex:1;background:none;border:none;color:var(--sub);padding:12px 4px;font-size:11px;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:3px}
+.tabbar button.active{color:var(--accent)}
+.tabbar button .ic{font-size:20px}
+
+.page{padding:12px; display:none}
+.page.active{display:block}
+
+/* パネル */
+.panel{background:var(--panel);border-radius:10px;padding:12px;margin-bottom:10px;border:1px solid var(--line)}
+.panel h2{margin-top:0;color:var(--accent);border-bottom:1px solid var(--line);padding-bottom:6px}
+
+/* ボタン */
+.btn{background:var(--bg2);color:var(--txt);border:1px solid var(--line);padding:10px 12px;border-radius:8px;font-family:inherit;font-size:14px;cursor:pointer}
+.btn:active{background:var(--accent2);color:var(--bg)}
+.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent2);font-weight:bold}
+.btn.danger{background:var(--lose);color:#fff}
+.btn.mini{padding:6px 10px;font-size:12px}
+
+/* セレクトチップ */
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.chip{background:var(--bg2);border:1px solid var(--line);padding:8px 10px;border-radius:16px;font-size:13px;cursor:pointer;user-select:none}
+.chip.selected{background:var(--accent);color:var(--bg);border-color:var(--accent2);font-weight:bold}
+.chip.fav::before{content:"⭐ ";}
+.chip.small{font-size:11px;padding:5px 8px}
+
+/* 結果ボタン */
+.result-btns{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px}
+.result-btn{padding:22px 4px;border-radius:10px;font-size:22px;font-weight:bold;color:#fff;border:none;font-family:inherit}
+.result-btn:active{filter:brightness(1.2)}
+.result-btn.win{background:var(--win)}
+.result-btn.lose{background:var(--lose)}
+.result-btn.draw{background:var(--draw)}
+
+/* 選択状況表示 */
+.sel-status{background:var(--bg2);padding:10px;border-radius:8px;margin:8px 0;font-size:13px}
+.sel-status .lbl{color:var(--sub);font-size:11px}
+.sel-status .val{color:var(--accent);font-weight:bold;font-size:15px}
+.sel-status .row{display:flex;justify-content:space-between;align-items:center;margin:3px 0}
+
+/* 検索 */
+.search{width:100%;padding:8px 10px;background:var(--bg2);border:1px solid var(--line);border-radius:8px;color:var(--txt);font-size:14px;font-family:inherit}
+
+/* テーブル */
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:6px 4px;text-align:center;border-bottom:1px solid var(--line)}
+th{background:var(--hdr);color:var(--accent);font-weight:bold;position:sticky;top:0}
+td.name{text-align:left;padding-left:8px;font-weight:bold}
+tr:nth-child(even) td{background:rgba(255,255,255,0.02)}
+
+/* 勝率バー */
+.wr-bar{position:relative;background:var(--bg2);border-radius:4px;height:20px;overflow:hidden}
+.wr-fill{height:100%;background:var(--win)}
+.wr-fill.low{background:var(--lose)}
+.wr-fill.mid{background:var(--order)}
+.wr-txt{position:absolute;top:0;left:0;right:0;text-align:center;line-height:20px;font-size:12px;color:#fff;font-weight:bold;text-shadow:0 0 3px #000}
+
+/* トースト */
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--accent);color:var(--bg);padding:10px 18px;border-radius:20px;font-weight:bold;box-shadow:0 4px 12px rgba(0,0,0,.5);z-index:100;font-size:14px;pointer-events:none;opacity:0;transition:opacity 0.2s}
+.toast.show{opacity:1}
+
+/* サマリーカード */
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.card{background:var(--bg2);border-radius:8px;padding:10px;text-align:center;border:1px solid var(--line)}
+.card .lbl{font-size:11px;color:var(--sub)}
+.card .val{font-size:22px;color:var(--accent);font-weight:bold;margin-top:4px}
+.card .sub{font-size:10px;color:var(--sub);margin-top:2px}
+
+/* 折りたたみ */
+details{background:var(--panel);border-radius:8px;padding:8px 10px;margin-bottom:8px;border:1px solid var(--line)}
+summary{cursor:pointer;font-weight:bold;color:var(--accent);padding:4px 0}
+
+/* サブセクション */
+.subsec{margin-top:10px;border-top:1px dashed var(--line);padding-top:8px}
+.subsec-title{color:var(--accent);font-size:13px;font-weight:bold;margin-bottom:6px}
+
+/* 履歴カード */
+.hist-card{background:var(--bg2);border-radius:8px;padding:8px 10px;margin-bottom:6px;border-left:4px solid var(--draw);font-size:13px}
+.hist-card.win{border-left-color:var(--win)}
+.hist-card.lose{border-left-color:var(--lose)}
+.hist-row1{display:flex;justify-content:space-between;align-items:center}
+.hist-row2{font-size:11px;color:var(--sub);margin-top:3px}
+.hist-del{background:none;border:none;color:var(--lose);cursor:pointer;font-size:16px;padding:0 6px}
+
+.mode-tab{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}
+.mode-tab .chip{padding:5px 8px;font-size:12px}
+
+hr{border:none;border-top:1px solid var(--line);margin:12px 0}
+label{display:block;color:var(--sub);font-size:12px;margin-bottom:3px}
+input[type=number],input[type=text],select{width:100%;padding:8px;background:var(--bg2);border:1px solid var(--line);border-radius:6px;color:var(--txt);font-family:inherit;font-size:14px}
+
+.filter-row{display:flex;gap:6px;margin-bottom:8px;align-items:center}
+.filter-row select{flex:1}
+.filter-row .lbl{color:var(--sub);font-size:12px;white-space:nowrap}
+
+.empty{text-align:center;color:var(--sub);padding:30px 10px;font-size:13px}
+
+/* BAN行 */
+.ban-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-top:6px}
+.ban-row .chip-slot{background:var(--bg2);border:1px dashed var(--ban);border-radius:6px;padding:8px 4px;text-align:center;font-size:12px;color:var(--sub);cursor:pointer;min-height:36px}
+.ban-row .chip-slot.filled{background:var(--ban);color:#fff;border-style:solid;font-weight:bold}
+
+/* モーダル */
+.modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);z-index:50;display:none;align-items:flex-end;justify-content:center}
+.modal.show{display:flex}
+.modal-inner{background:var(--panel);border-radius:16px 16px 0 0;padding:16px;width:100%;max-width:500px;max-height:80vh;overflow-y:auto;border-top:2px solid var(--accent)}
+.modal-inner h3{margin:0 0 10px 0}
+.modal-close{position:absolute;top:10px;right:16px;background:none;border:none;color:var(--txt);font-size:24px;cursor:pointer;z-index:10}
+
+/* ローディング */
+.load{text-align:center;padding:20px;color:var(--sub)}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="title">⚔️ ブロスタログ</div>
+  <div class="stat" id="topStat">-</div>
+</div>
+
+<!-- 記録タブ -->
+<div class="page active" id="page-rec">
+  <div class="panel">
+    <h2>⚡ 試合を記録</h2>
+    <div class="sel-status">
+      <div class="row"><span class="lbl">キャラ</span><span class="val" id="selChar">選択して</span></div>
+      <div class="row"><span class="lbl">マップ</span><span class="val" id="selMap">選択して</span></div>
+      <div class="row"><span class="lbl">モード</span><span class="val" id="selMode">-</span></div>
+    </div>
+
+    <div>
+      <label>自分のキャラ（お気に入り優先）</label>
+      <input class="search" id="charSearch" placeholder="キャラ名で検索 (例: スパ)" oninput="renderCharChips()">
+      <div class="chips" id="charChips"></div>
+    </div>
+
+    <div style="margin-top:10px">
+      <label>マップ</label>
+      <div class="mode-tab" id="mapModeTabs"></div>
+      <div class="chips" id="mapChips"></div>
+    </div>
+
+    <details>
+      <summary>詳細入力（味方・敵・BAN・RP・MVP・先攻後攻）</summary>
+
+      <div class="subsec">
+        <div class="subsec-title">💙 味方 (2人)</div>
+        <div class="ban-row" style="grid-template-columns:1fr 1fr">
+          <div class="chip-slot" id="ally1" data-slot="ally1" onclick="openPicker('味方1','ally1')">-</div>
+          <div class="chip-slot" id="ally2" data-slot="ally2" onclick="openPicker('味方2','ally2')">-</div>
+        </div>
+      </div>
+
+      <div class="subsec">
+        <div class="subsec-title">❤️ 敵 (3人)</div>
+        <div class="ban-row">
+          <div class="chip-slot" id="enemy1" data-slot="enemy1" onclick="openPicker('敵1','enemy1')">-</div>
+          <div class="chip-slot" id="enemy2" data-slot="enemy2" onclick="openPicker('敵2','enemy2')">-</div>
+          <div class="chip-slot" id="enemy3" data-slot="enemy3" onclick="openPicker('敵3','enemy3')">-</div>
+        </div>
+      </div>
+
+      <div class="subsec">
+        <div class="subsec-title">🚫 自BAN (3体)</div>
+        <div class="ban-row">
+          <div class="chip-slot" id="myban1" data-slot="myban1" onclick="openPicker('自BAN1','myban1')">-</div>
+          <div class="chip-slot" id="myban2" data-slot="myban2" onclick="openPicker('自BAN2','myban2')">-</div>
+          <div class="chip-slot" id="myban3" data-slot="myban3" onclick="openPicker('自BAN3','myban3')">-</div>
+        </div>
+      </div>
+
+      <div class="subsec">
+        <div class="subsec-title">🚫 敵BAN (3体)</div>
+        <div class="ban-row">
+          <div class="chip-slot" id="eban1" data-slot="eban1" onclick="openPicker('敵BAN1','eban1')">-</div>
+          <div class="chip-slot" id="eban2" data-slot="eban2" onclick="openPicker('敵BAN2','eban2')">-</div>
+          <div class="chip-slot" id="eban3" data-slot="eban3" onclick="openPicker('敵BAN3','eban3')">-</div>
+        </div>
+      </div>
+
+      <div class="subsec">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+          <div>
+            <label>試合後RP</label>
+            <input type="number" id="inpRP" placeholder="例:820">
+          </div>
+          <div>
+            <label>先攻/後攻</label>
+            <select id="inpOrder"><option value="">-</option><option>先攻</option><option>後攻</option></select>
+          </div>
+          <div>
+            <label>MVP</label>
+            <select id="inpMVP"><option value="">-</option><option>MVP</option></select>
+          </div>
+        </div>
+        <label style="margin-top:6px">メモ</label>
+        <input type="text" id="inpMemo" placeholder="任意">
+      </div>
+    </details>
+
+    <div class="result-btns">
+      <button class="result-btn win" onclick="saveBattle('勝ち')">勝ち</button>
+      <button class="result-btn lose" onclick="saveBattle('負け')">負け</button>
+      <button class="result-btn draw" onclick="saveBattle('引分')">引分</button>
+    </div>
+  </div>
+</div>
+
+<!-- 集計タブ -->
+<div class="page" id="page-stats">
+  <div class="panel">
+    <h2>📊 サマリー</h2>
+    <div class="cards" id="summaryCards"></div>
+  </div>
+
+  <div class="panel">
+    <h2>🏆 キャラ別勝率</h2>
+    <div class="filter-row">
+      <span class="lbl">並び:</span>
+      <select id="sortChar" onchange="renderStats()">
+        <option value="games">試合数順</option>
+        <option value="wr_desc">勝率 高い順</option>
+        <option value="wr_asc">勝率 低い順</option>
+      </select>
+      <select id="minChar" onchange="renderStats()">
+        <option value="1">1試合〜</option>
+        <option value="3">3試合〜</option>
+        <option value="5">5試合〜</option>
+        <option value="10">10試合〜</option>
+      </select>
+    </div>
+    <div id="charStatsBody"></div>
+  </div>
+
+  <div class="panel">
+    <h2>🗺 マップ別勝率</h2>
+    <div class="filter-row">
+      <span class="lbl">並び:</span>
+      <select id="sortMap" onchange="renderStats()">
+        <option value="games">試合数順</option>
+        <option value="wr_desc">勝率 高い順</option>
+        <option value="wr_asc">勝率 低い順</option>
+      </select>
+    </div>
+    <div id="mapStatsBody"></div>
+  </div>
+
+  <div class="panel">
+    <h2>🎯 モード別勝率</h2>
+    <div id="modeStatsBody"></div>
+  </div>
+
+  <div class="panel">
+    <h2>⭐ MVP率</h2>
+    <div id="mvpStatsBody"></div>
+  </div>
+</div>
+
+<!-- 履歴タブ -->
+<div class="page" id="page-hist">
+  <div class="panel">
+    <h2>📜 履歴 <span id="histCount" style="font-size:12px;color:var(--sub)"></span></h2>
+    <div class="filter-row">
+      <select id="filterChar" onchange="renderHistory()">
+        <option value="">全キャラ</option>
+      </select>
+      <select id="filterMap" onchange="renderHistory()">
+        <option value="">全マップ</option>
+      </select>
+      <select id="filterResult" onchange="renderHistory()">
+        <option value="">全結果</option>
+        <option>勝ち</option><option>負け</option><option>引分</option>
+      </select>
+    </div>
+    <div id="histBody"></div>
+  </div>
+</div>
+
+<!-- 設定タブ -->
+<div class="page" id="page-set">
+  <div class="panel">
+    <h2>⭐ お気に入りキャラ (最大12体)</h2>
+    <div style="font-size:12px;color:var(--sub);margin-bottom:8px">記録画面のキャラリスト上部に表示されます</div>
+    <input class="search" id="favSearch" placeholder="お気に入りに追加するキャラ検索" oninput="renderFavSearch()">
+    <div class="chips" id="favSearchChips"></div>
+    <hr>
+    <div class="subsec-title">現在のお気に入り</div>
+    <div class="chips" id="favList"></div>
+  </div>
+
+  <div class="panel">
+    <h2>💾 データ管理</h2>
+    <button class="btn primary" onclick="exportJSON()">📤 JSONエクスポート（バックアップ）</button>
+    <div style="height:8px"></div>
+    <button class="btn" onclick="document.getElementById('imp').click()">📥 JSONインポート（復元）</button>
+    <input type="file" id="imp" accept=".json" style="display:none" onchange="importJSON(event)">
+    <div style="height:8px"></div>
+    <button class="btn danger" onclick="clearAll()">🗑 全データ削除</button>
+    <hr>
+    <div style="font-size:12px;color:var(--sub)">
+      データは端末のブラウザ内に保存されています。ホーム画面追加後もSafariのデータクリアで消える可能性があるため、月1回JSONエクスポートを推奨。
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>📱 このアプリについて</h2>
+    <div style="font-size:12px;color:var(--sub);line-height:1.6">
+      Brawl Stars ガチバトル 個人集計ツール v1.0<br>
+      106キャラ・26マップ・BAN3+3対応<br>
+      データは全て端末内保存でプライベート<br>
+      ホーム画面追加でアプリのように使用可
+    </div>
+  </div>
+</div>
+
+<!-- タブバー -->
+<div class="tabbar">
+  <button class="active" data-page="rec" onclick="showPage('rec')"><span class="ic">⚡</span>記録</button>
+  <button data-page="stats" onclick="showPage('stats')"><span class="ic">📊</span>集計</button>
+  <button data-page="hist" onclick="showPage('hist')"><span class="ic">📜</span>履歴</button>
+  <button data-page="set" onclick="showPage('set')"><span class="ic">⚙️</span>設定</button>
+</div>
+
+<!-- トースト -->
+<div class="toast" id="toast"></div>
+
+<!-- ピッカーモーダル -->
+<div class="modal" id="picker">
+  <button class="modal-close" onclick="closePicker()">×</button>
+  <div class="modal-inner">
+    <h3 id="pickerTitle">選択</h3>
+    <input class="search" id="pickerSearch" placeholder="キャラ検索" oninput="renderPickerChips()">
+    <div style="margin-top:6px">
+      <button class="btn mini" onclick="pickerSelect('')">クリア</button>
+    </div>
+    <div class="chips" id="pickerChips" style="margin-top:10px"></div>
+  </div>
+</div>
+
+<script>
+// ========== データ定義 ==========
+const BRAWLERS = ["シェリー", "コルト", "ブル", "ブロック", "バーリー", "ニタ", "エル・プリモ", "ポコ", "ローサ", "リコ", "ジェシー", "ダイナマイク", "ダリル", "ペニー", "ティック", "カール", "8ビット", "ジャッキー", "ガス", "ボウ", "エリザベス", "パム", "フランケン", "ビビ", "ビー", "Emz", "ゲイル", "ナーニ", "コレット", "エドガー", "ストゥー", "ベル", "グロム", "グリフ", "アッシュ", "ローラ", "ボニー", "サム", "マンディ", "メイジー", "ハンク", "パール", "ラリー&ローリー", "アンジェロ", "ベリー", "シェイド", "ミープル", "トランク", "ボルト", "モーティス", "タラ", "ジーン", "ミスターP", "MAX", "スプラウト", "ルー", "バイロン", "ラフス", "スクウィーク", "バズ", "ファング", "イヴ", "ジャネット", "オーティス", "バスター", "グレイ", "R-T", "ウィロー", "ダグ", "チャック", "チャーリー", "ミコ", "メロディー", "リリー", "クランシー", "モー", "ジュジュ", "オーリー", "ルミ", "フィンクス", "ジェヨン", "アリー", "ミナ", "ジギー", "ジジ", "グローウィー", "ナジア", "ダミアン", "スターノヴァ", "ウェンディ", "スパイク", "クロウ", "レオン", "サンディ", "サージ", "アンバー", "メグ", "チェスター", "コーデリアス", "キット", "ドラコ", "ケンジ", "ピアス", "ノリ", "カゼ", "シリウス"];
+const MAPS_BY_MODE = {"エメラルドハント": ["ごつごつ坑道", "ダブルレール", "アンダーマイン", "エメラルドの要塞"], "ブロストライカー": ["中央コート", "ピンボールドリーム", "静かな広場", "トリプル・ドリブル"], "強奪": ["ホットポテト", "安全地帯", "どんぱち谷", "橋の彼方", "ピットストップ", "安全地帯・改"], "賞金稼ぎ": ["流れ星", "隠れ家", "乾燥地帯", "ミルフィーユ"], "ホットゾーン": ["ビートルバトル", "オープンビジネス", "炎のリング", "パラレルワールド"], "ノックアウト": ["オープンフィールド", "ベルの岩", "燃える不死鳥", "新たなる地平"]};
+const ALL_MAPS = [];
+const MAP_TO_MODE = {};
+for(const [m, arr] of Object.entries(MAPS_BY_MODE)){
+  for(const mp of arr){ ALL_MAPS.push(mp); MAP_TO_MODE[mp]=m; }
+}
+const MODES = Object.keys(MAPS_BY_MODE);
+
+// ========== ステート ==========
+let state = {
+  battles: [],           // {id, date, brawler, map, mode, result, rp, order, mvp, ally1, ally2, enemy1, enemy2, enemy3, myban1, myban2, myban3, eban1, eban2, eban3, memo}
+  favorites: [],         // ["スパイク", ...]
+  charFreq: {},          // {キャラ名: 使用回数}
+  mapFreq: {},           // {マップ名: 使用回数}
+};
+let selection = {
+  char: null, map: null, mode: null,
+  ally1:null, ally2:null,
+  enemy1:null, enemy2:null, enemy3:null,
+  myban1:null, myban2:null, myban3:null,
+  eban1:null, eban2:null, eban3:null,
+};
+let pickerTarget = null;
+let pickerSearchTerm = '';
+
+// ========== ストレージ ==========
+const STORAGE_KEY = 'brawl_log_v1';
+function load(){
+  try{
+    const s = localStorage.getItem(STORAGE_KEY);
+    if(s){ state = Object.assign(state, JSON.parse(s)); }
+  }catch(e){ console.error(e); }
+}
+function save(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+// ========== 初期化 ==========
+function init(){
+  load();
+  renderCharChips();
+  renderMapModeTabs();
+  renderMapChips();
+  renderFavList();
+  renderFilterOptions();
+  updateTopStat();
+  updateSelStatus();
+}
+
+// ========== トップバー ==========
+function updateTopStat(){
+  const n = state.battles.length;
+  const w = state.battles.filter(b=>b.result==='勝ち').length;
+  const l = state.battles.filter(b=>b.result==='負け').length;
+  const wr = (w+l)>0 ? Math.round(w/(w+l)*100) : 0;
+  document.getElementById('topStat').textContent = `${n}試合 / 勝率${wr}%`;
+}
+
+// ========== タブ ==========
+function showPage(name){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  document.querySelectorAll('.tabbar button').forEach(b=>b.classList.toggle('active', b.dataset.page===name));
+  if(name==='stats') renderStats();
+  if(name==='hist') renderHistory();
+  if(name==='set') renderFavList();
+  window.scrollTo(0,0);
+}
+
+// ========== キャラチップ ==========
+function renderCharChips(){
+  const q = (document.getElementById('charSearch').value||'').trim().toLowerCase();
+  const box = document.getElementById('charChips');
+  const favs = state.favorites.filter(f=>BRAWLERS.includes(f));
+  const nonFav = BRAWLERS.filter(b=>!favs.includes(b));
+  // 使用頻度順
+  const sortedNonFav = nonFav.sort((a,b)=>(state.charFreq[b]||0)-(state.charFreq[a]||0));
+  const ordered = [...favs, ...sortedNonFav];
+  const filtered = q ? ordered.filter(b=>b.toLowerCase().includes(q)) : ordered;
+  box.innerHTML = '';
+  filtered.forEach(b=>{
+    const el = document.createElement('div');
+    el.className = 'chip' + (favs.includes(b)?' fav':'') + (selection.char===b?' selected':'');
+    el.textContent = b;
+    el.onclick = ()=>{ selection.char = b; updateSelStatus(); renderCharChips(); };
+    box.appendChild(el);
+  });
+}
+
+// ========== マップチップ ==========
+let currentMapMode = 'ALL';
+function renderMapModeTabs(){
+  const box = document.getElementById('mapModeTabs');
+  box.innerHTML = '';
+  const modes = ['ALL', ...MODES];
+  modes.forEach(m=>{
+    const el = document.createElement('div');
+    el.className = 'chip small' + (currentMapMode===m?' selected':'');
+    el.textContent = m==='ALL' ? '全モード' : m;
+    el.onclick = ()=>{ currentMapMode=m; renderMapModeTabs(); renderMapChips(); };
+    box.appendChild(el);
+  });
+}
+function renderMapChips(){
+  const box = document.getElementById('mapChips');
+  const maps = currentMapMode==='ALL' ? ALL_MAPS : MAPS_BY_MODE[currentMapMode];
+  // 使用頻度順
+  const sorted = [...maps].sort((a,b)=>(state.mapFreq[b]||0)-(state.mapFreq[a]||0));
+  box.innerHTML = '';
+  sorted.forEach(m=>{
+    const el = document.createElement('div');
+    el.className = 'chip' + (selection.map===m?' selected':'');
+    el.textContent = m;
+    el.onclick = ()=>{
+      selection.map = m;
+      selection.mode = MAP_TO_MODE[m];
+      updateSelStatus();
+      renderMapChips();
+    };
+    box.appendChild(el);
+  });
+}
+
+// ========== 選択ステータス ==========
+function updateSelStatus(){
+  document.getElementById('selChar').textContent = selection.char || '選択して';
+  document.getElementById('selMap').textContent = selection.map || '選択して';
+  document.getElementById('selMode').textContent = selection.mode || '-';
+  ['ally1','ally2','enemy1','enemy2','enemy3','myban1','myban2','myban3','eban1','eban2','eban3'].forEach(k=>{
+    const el = document.getElementById(k);
+    if(!el) return;
+    const v = selection[k];
+    el.textContent = v || '-';
+    el.classList.toggle('filled', !!v);
+  });
+}
+
+// ========== ピッカー ==========
+function openPicker(title, target){
+  pickerTarget = target;
+  pickerSearchTerm = '';
+  document.getElementById('pickerTitle').textContent = title;
+  document.getElementById('pickerSearch').value = '';
+  renderPickerChips();
+  document.getElementById('picker').classList.add('show');
+}
+function closePicker(){
+  document.getElementById('picker').classList.remove('show');
+  pickerTarget = null;
+}
+function renderPickerChips(){
+  const q = (document.getElementById('pickerSearch').value||'').trim().toLowerCase();
+  const box = document.getElementById('pickerChips');
+  const favs = state.favorites.filter(f=>BRAWLERS.includes(f));
+  const nonFav = BRAWLERS.filter(b=>!favs.includes(b));
+  const sortedNonFav = nonFav.sort((a,b)=>(state.charFreq[b]||0)-(state.charFreq[a]||0));
+  const ordered = [...favs, ...sortedNonFav];
+  const filtered = q ? ordered.filter(b=>b.toLowerCase().includes(q)) : ordered;
+  box.innerHTML = '';
+  filtered.forEach(b=>{
+    const el = document.createElement('div');
+    el.className = 'chip' + (favs.includes(b)?' fav':'');
+    el.textContent = b;
+    el.onclick = ()=>pickerSelect(b);
+    box.appendChild(el);
+  });
+}
+function pickerSelect(v){
+  if(!pickerTarget) return;
+  selection[pickerTarget] = v || null;
+  updateSelStatus();
+  closePicker();
+}
+
+// ========== 保存 ==========
+function saveBattle(result){
+  if(!selection.char){ toast('キャラを選んでください'); return; }
+  if(!selection.map){ toast('マップを選んでください'); return; }
+  const now = new Date();
+  const b = {
+    id: Date.now() + Math.random().toString(36).slice(2,6),
+    date: now.toISOString(),
+    brawler: selection.char,
+    map: selection.map,
+    mode: selection.mode,
+    result: result,
+    rp: parseInt(document.getElementById('inpRP').value)||null,
+    order: document.getElementById('inpOrder').value || null,
+    mvp: document.getElementById('inpMVP').value || null,
+    ally1: selection.ally1, ally2: selection.ally2,
+    enemy1: selection.enemy1, enemy2: selection.enemy2, enemy3: selection.enemy3,
+    myban1: selection.myban1, myban2: selection.myban2, myban3: selection.myban3,
+    eban1: selection.eban1, eban2: selection.eban2, eban3: selection.eban3,
+    memo: document.getElementById('inpMemo').value || null,
+  };
+  state.battles.push(b);
+  state.charFreq[b.brawler] = (state.charFreq[b.brawler]||0)+1;
+  state.mapFreq[b.map] = (state.mapFreq[b.map]||0)+1;
+  save();
+  toast(`${result}を記録 (${b.brawler} / ${b.map})`);
+  if(navigator.vibrate) navigator.vibrate(30);
+
+  // 詳細情報だけリセット（キャラ・マップは連戦用に保持）
+  ['ally1','ally2','enemy1','enemy2','enemy3','myban1','myban2','myban3','eban1','eban2','eban3'].forEach(k=>selection[k]=null);
+  document.getElementById('inpRP').value='';
+  document.getElementById('inpOrder').value='';
+  document.getElementById('inpMVP').value='';
+  document.getElementById('inpMemo').value='';
+  updateSelStatus();
+  updateTopStat();
+  renderCharChips();
+  renderMapChips();
+}
+
+// ========== トースト ==========
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2500);
+}
+
+// ========== 集計 ==========
+function renderStats(){
+  const bs = state.battles;
+  // サマリーカード
+  const n = bs.length;
+  const w = bs.filter(b=>b.result==='勝ち').length;
+  const l = bs.filter(b=>b.result==='負け').length;
+  const d = bs.filter(b=>b.result==='引分').length;
+  const wr = (w+l)>0 ? Math.round(w/(w+l)*1000)/10 : 0;
+  const mvp = bs.filter(b=>b.mvp==='MVP').length;
+  const mvpR = w>0 ? Math.round(mvp/w*1000)/10 : 0;
+  const recent10 = bs.slice(-10);
+  const r10w = recent10.filter(b=>b.result==='勝ち').length;
+  const r10l = recent10.filter(b=>b.result==='負け').length;
+  const r10wr = (r10w+r10l)>0 ? Math.round(r10w/(r10w+r10l)*1000)/10 : 0;
+  // ストリーク計算
+  let curStreak = 0, curType = '';
+  for(let i=bs.length-1;i>=0;i--){
+    if(bs[i].result==='引分') continue;
+    if(!curType){ curType=bs[i].result; curStreak=1; }
+    else if(bs[i].result===curType) curStreak++;
+    else break;
+  }
+  const streakStr = curStreak>0 ? `${curStreak}${curType==='勝ち'?'連勝':'連敗'}` : '-';
+
+  document.getElementById('summaryCards').innerHTML = `
+    <div class="card"><div class="lbl">総試合</div><div class="val">${n}</div><div class="sub">勝${w}/負${l}/分${d}</div></div>
+    <div class="card"><div class="lbl">全体勝率</div><div class="val">${wr}%</div></div>
+    <div class="card"><div class="lbl">直近10試合</div><div class="val">${r10wr}%</div><div class="sub">勝${r10w}/負${r10l}</div></div>
+    <div class="card"><div class="lbl">現在ストリーク</div><div class="val">${streakStr}</div></div>
+    <div class="card"><div class="lbl">MVP回数</div><div class="val">${mvp}</div><div class="sub">勝利中のMVP率${mvpR}%</div></div>
+    <div class="card"><div class="lbl">使用キャラ数</div><div class="val">${Object.keys(state.charFreq).length}</div></div>
+  `;
+
+  // キャラ別
+  renderGroupStats('char', 'brawler', 'charStatsBody', 'sortChar', 'minChar');
+  // マップ別
+  renderGroupStats('map', 'map', 'mapStatsBody', 'sortMap', null);
+  // モード別
+  renderGroupStats('mode', 'mode', 'modeStatsBody', null, null);
+  // MVP率
+  renderMVPStats();
+}
+
+function renderGroupStats(kind, field, bodyId, sortId, minId){
+  const bs = state.battles;
+  const groups = {};
+  bs.forEach(b=>{
+    const k = b[field];
+    if(!k) return;
+    if(!groups[k]) groups[k] = {n:0,w:0,l:0,d:0};
+    groups[k].n++;
+    if(b.result==='勝ち') groups[k].w++;
+    else if(b.result==='負け') groups[k].l++;
+    else groups[k].d++;
+  });
+  const min = minId ? parseInt(document.getElementById(minId).value) : 1;
+  const sort = sortId ? document.getElementById(sortId).value : 'games';
+  let arr = Object.entries(groups)
+    .filter(([k,v])=>v.n>=min)
+    .map(([k,v])=>{
+      const wr = (v.w+v.l)>0 ? v.w/(v.w+v.l) : 0;
+      return {k, ...v, wr};
+    });
+  if(sort==='wr_desc') arr.sort((a,b)=>b.wr-a.wr);
+  else if(sort==='wr_asc') arr.sort((a,b)=>a.wr-b.wr);
+  else arr.sort((a,b)=>b.n-a.n);
+
+  if(arr.length===0){
+    document.getElementById(bodyId).innerHTML = '<div class="empty">データがありません</div>';
+    return;
+  }
+  let html = '<table><thead><tr><th style="text-align:left;padding-left:8px">名前</th><th>試合</th><th>勝率</th><th style="width:40%">バー</th></tr></thead><tbody>';
+  arr.forEach(row=>{
+    const wrp = Math.round(row.wr*1000)/10;
+    const cls = row.wr>=0.55 ? '' : (row.wr>=0.45 ? 'mid' : 'low');
+    html += `<tr>
+      <td class="name">${escape(row.k)}</td>
+      <td>${row.n}</td>
+      <td>${wrp}%</td>
+      <td><div class="wr-bar"><div class="wr-fill ${cls}" style="width:${wrp}%"></div><div class="wr-txt">${row.w}勝${row.l}敗</div></div></td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  document.getElementById(bodyId).innerHTML = html;
+}
+
+function renderMVPStats(){
+  const bs = state.battles.filter(b=>b.result==='勝ち');
+  const groups = {};
+  bs.forEach(b=>{
+    if(!b.brawler) return;
+    if(!groups[b.brawler]) groups[b.brawler] = {w:0, mvp:0};
+    groups[b.brawler].w++;
+    if(b.mvp==='MVP') groups[b.brawler].mvp++;
+  });
+  let arr = Object.entries(groups)
+    .filter(([k,v])=>v.w>=3)
+    .map(([k,v])=>({k, w:v.w, mvp:v.mvp, r:v.mvp/v.w}))
+    .sort((a,b)=>b.r-a.r);
+  if(arr.length===0){
+    document.getElementById('mvpStatsBody').innerHTML = '<div class="empty">勝利3回以上のキャラがまだいません</div>';
+    return;
+  }
+  let html = '<table><thead><tr><th style="text-align:left;padding-left:8px">キャラ</th><th>勝</th><th>MVP</th><th>MVP率</th></tr></thead><tbody>';
+  arr.forEach(row=>{
+    const rp = Math.round(row.r*1000)/10;
+    html += `<tr><td class="name">${escape(row.k)}</td><td>${row.w}</td><td>${row.mvp}</td><td>${rp}%</td></tr>`;
+  });
+  html += '</tbody></table>';
+  document.getElementById('mvpStatsBody').innerHTML = html;
+}
+
+// ========== 履歴 ==========
+function renderFilterOptions(){
+  const fc = document.getElementById('filterChar');
+  const fm = document.getElementById('filterMap');
+  fc.innerHTML = '<option value="">全キャラ</option>' + BRAWLERS.map(b=>`<option>${escape(b)}</option>`).join('');
+  fm.innerHTML = '<option value="">全マップ</option>' + ALL_MAPS.map(m=>`<option>${escape(m)}</option>`).join('');
+}
+function renderHistory(){
+  const fc = document.getElementById('filterChar').value;
+  const fm = document.getElementById('filterMap').value;
+  const fr = document.getElementById('filterResult').value;
+  let arr = [...state.battles].reverse();
+  if(fc) arr = arr.filter(b=>b.brawler===fc);
+  if(fm) arr = arr.filter(b=>b.map===fm);
+  if(fr) arr = arr.filter(b=>b.result===fr);
+  document.getElementById('histCount').textContent = `(${arr.length}件)`;
+  if(arr.length===0){
+    document.getElementById('histBody').innerHTML = '<div class="empty">該当する試合がありません</div>';
+    return;
+  }
+  const html = arr.slice(0,300).map(b=>{
+    const dt = new Date(b.date);
+    const dstr = `${dt.getMonth()+1}/${dt.getDate()} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
+    const cls = b.result==='勝ち' ? 'win' : (b.result==='負け'?'lose':'');
+    let extra = [];
+    if(b.rp) extra.push('RP:'+b.rp);
+    if(b.order) extra.push(b.order);
+    if(b.mvp) extra.push('⭐MVP');
+    return `<div class="hist-card ${cls}">
+      <div class="hist-row1">
+        <div><strong>${escape(b.brawler)}</strong> / ${escape(b.map)}</div>
+        <div><strong style="color:${b.result==='勝ち'?'var(--winL)':(b.result==='負け'?'var(--loseL)':'var(--drawL)')}">${b.result}</strong>
+        <button class="hist-del" onclick="deleteBattle('${b.id}')">🗑</button></div>
+      </div>
+      <div class="hist-row2">${dstr} · ${escape(b.mode||'')} ${extra.length? '· '+extra.join(' · '):''}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('histBody').innerHTML = html + (arr.length>300 ? `<div class="empty">...他 ${arr.length-300} 件</div>` : '');
+}
+function deleteBattle(id){
+  if(!confirm('この試合を削除しますか？')) return;
+  const b = state.battles.find(x=>x.id===id);
+  if(b){
+    if(state.charFreq[b.brawler]) state.charFreq[b.brawler]--;
+    if(state.mapFreq[b.map]) state.mapFreq[b.map]--;
+  }
+  state.battles = state.battles.filter(b=>b.id!==id);
+  save();
+  renderHistory();
+  updateTopStat();
+}
+
+// ========== お気に入り ==========
+function renderFavSearch(){
+  const q = (document.getElementById('favSearch').value||'').trim().toLowerCase();
+  const box = document.getElementById('favSearchChips');
+  if(!q){ box.innerHTML=''; return; }
+  const filtered = BRAWLERS.filter(b=>b.toLowerCase().includes(q) && !state.favorites.includes(b)).slice(0,20);
+  box.innerHTML = filtered.map(b=>`<div class="chip" onclick="addFav('${escape(b)}')">${escape(b)} ＋</div>`).join('');
+}
+function addFav(b){
+  if(state.favorites.length>=12){ toast('お気に入りは12体まで'); return; }
+  if(!state.favorites.includes(b)){ state.favorites.push(b); save(); }
+  document.getElementById('favSearch').value='';
+  renderFavSearch();
+  renderFavList();
+  renderCharChips();
+}
+function removeFav(b){
+  state.favorites = state.favorites.filter(x=>x!==b);
+  save();
+  renderFavList();
+  renderCharChips();
+}
+function renderFavList(){
+  const box = document.getElementById('favList');
+  if(state.favorites.length===0){ box.innerHTML='<div style="color:var(--sub);font-size:12px">まだお気に入りがありません</div>'; return; }
+  box.innerHTML = state.favorites.map(b=>`<div class="chip fav" onclick="removeFav('${escape(b)}')">${escape(b)} ×</div>`).join('');
+}
+
+// ========== エクスポート・インポート ==========
+function exportJSON(){
+  const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const dt = new Date();
+  a.href = url;
+  a.download = `brawl_log_${dt.getFullYear()}${String(dt.getMonth()+1).padStart(2,'0')}${String(dt.getDate()).padStart(2,'0')}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('JSONをダウンロードしました');
+}
+function importJSON(ev){
+  const file = ev.target.files[0];
+  if(!file) return;
+  const r = new FileReader();
+  r.onload = e=>{
+    try{
+      const data = JSON.parse(e.target.result);
+      if(!data.battles || !Array.isArray(data.battles)){ toast('不正なファイル'); return; }
+      if(!confirm(`既存データに${data.battles.length}試合を追加しますか？`)) return;
+      const existingIds = new Set(state.battles.map(b=>b.id));
+      data.battles.forEach(b=>{
+        if(!existingIds.has(b.id)){
+          state.battles.push(b);
+          state.charFreq[b.brawler] = (state.charFreq[b.brawler]||0)+1;
+          state.mapFreq[b.map] = (state.mapFreq[b.map]||0)+1;
+        }
+      });
+      if(data.favorites){
+        data.favorites.forEach(f=>{ if(!state.favorites.includes(f) && state.favorites.length<12) state.favorites.push(f); });
+      }
+      save();
+      updateTopStat();
+      renderCharChips();
+      renderMapChips();
+      renderFavList();
+      toast(`インポート完了: ${data.battles.length}試合`);
+    }catch(e){ alert('エラー: '+e.message); }
+  };
+  r.readAsText(file);
+}
+function clearAll(){
+  if(!confirm('全データを削除します。復元不可。本当にいいですか？')) return;
+  if(!confirm('本当に本当にいいですか？（最終確認）')) return;
+  state = {battles:[], favorites:[], charFreq:{}, mapFreq:{}};
+  save();
+  updateTopStat();
+  renderCharChips();
+  renderMapChips();
+  renderFavList();
+  toast('全データを削除しました');
+}
+
+// ========== ユーティリティ ==========
+function escape(s){
+  if(s==null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,"&#39;").replace(/"/g,'&quot;');
+}
+
+// ========== 起動 ==========
+init();
+
+// モーダル外クリックで閉じる
+document.getElementById('picker').addEventListener('click', function(e){
+  if(e.target===this) closePicker();
+});
+
+// Service Worker (PWA用・最小構成)
+if('serviceWorker' in navigator){
+  // オフラインキャッシュはインラインなので不要。manifestだけで動作。
+}
+</script>
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79"}' crossorigin="anonymous"></script>
+</body>
+</html>
